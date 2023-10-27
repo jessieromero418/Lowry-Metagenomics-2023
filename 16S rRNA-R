@@ -1,0 +1,304 @@
+############################################################################## 
+####################### 16S rRNA DATA ANALYSIS IN R ##########################
+############################################################################## 
+
+########################## 
+# R PACKAGE INSTALLATION #  
+########################## 
+
+# R analysis protocol is based on Orchestrating Microbiome Analysis (OMA): https://microbiome.github.io/OMA/  
+
+# Install all packages from OMA Github page. Only need to run this ONCE throughout entire analyses. Note: This takes several minutes to install all packages. Uncomment then run next line to install: 
+#source("https://raw.githubusercontent.com/microbiome/OMA/master/install_packages.R") 
+
+# Load mia package to upload and analyze QIIME2 16S rRNA data files 
+library(mia) 
+
+# If not already installed, install matrixStats package needed for mia package. Uncomment then run next line to install. 
+#install.packages("matrixStats") 
+
+# If not already loaded, load matrixStats package 
+library(matrixStats) 
+
+####################### 
+# UPLOAD QIIME2 FILES #  
+####################### 
+
+# Upload the four needed QIIME2 files: 
+# 1. featureTableFile is the output FeatureTable[Frequency] file from denoising 
+# 2. taxonomyTableFile is the output FeatureData[Taxonomy] file from taxonomy classification 
+# 3. sampleMetaFile is the metadatafile 
+# 4. phyTreeFile is the Phylogeny[Rooted] file 
+# All files will be combined into a TreeSummarizedExperiment file named 'data'. ‘data’ contains information from all 30 samples for this thesis. 
+
+data <- loadFromQIIME2( 
+  featureTableFile = 'C:/Users/jessi/Desktop/16S/v2023.5/table.qza', 
+  taxonomyTableFile = 'C:/Users/jessi/Desktop/16S/v2023.5/JR_taxonomy-silva-138-99-515-806.qza', 
+  sampleMetaFile = 'C:/Users/jessi/Desktop/16S/v2023.5/2022_Fall_Lowry_GB_JR_samples_metadata_ver2.tsv' 
+  featureNamesAsRefSeq = TRUE, refSeqFile = NULL, 
+  phyTreeFile = 'C:/Users/jessi/Desktop/16S/v2023.5/rooted-tree.qza') 
+
+# Look at the dimensions of 'data'. Should print the number of taxa and the number of samples (30 samples in ‘data’). 
+dim(data) 
+
+# Check that taxonomy information is available in 'data'. 
+checkTaxonomy(data) 
+taxonomyRanks(data) 
+
+# Print some of the taxonomy information in ‘data’. 
+head(rowData(data)[,taxonomyRanks(data)]) 
+
+################################## 
+# OPTIONAL: EDIT TAXONOMY LABELS #  
+################################## 
+
+# Load packages to edit ‘data’. 
+library(BiocParallel) 
+library(stringr) 
+library(S4Vectors) 
+library(stats4) 
+library(BiocGenerics) 
+
+# Edit 'data' to remove extra labels from taxa names (e.g., "p__") (from https://github.com/microbiome/OMA/blob/master/04_containers.Rmd) 
+rowdata_modified <- BiocParallel::bplapply(rowData(data),  
+  FUN = stringr::str_remove, pattern = '.*[kpcofgs]__') 
+rowdata_modified <- DataFrame(rowdata_modified) 
+rowData(data) <- rowdata_modified 
+
+# Check that extra labels were removed from ‘data’. 
+head(rowData(data)[,taxonomyRanks(data)]) 
+
+##################################################### 
+# TIMEPOINT HEATMAPS TO IDENTIFY DISSIMILAR SAMPLES #  
+##################################################### 
+
+# Load packages to use %>% for subsetting in R 
+library(dplyr) 
+library(magrittr) 
+
+# Print the number of samples in each sampling date category as a table 
+data$sampling_date %>% table() 
+
+# Subset 'data' by each sampling date category, save each as 'sdX'. 
+sd1 <- data[ , data$sampling_date %in% c("2019-03-26")] 
+sd2 <- data[ , data$sampling_date %in% c("2022-01-18")] 
+sd3 <- data[ , data$sampling_date %in% c("2022-01-25")] 
+sd4 <- data[ , data$sampling_date %in% c("2022-03-22")] 
+
+# Print the number of samples in each subset category and check that values did not change. 
+dim(sd1) 
+dim(sd2) 
+dim(sd3) 
+dim(sd4) 
+
+# Create a heatmap of the top 20 Families for each timepoint, starting with the first time point only (sd1). 
+# Agglomerate Families in ‘sd1’ 
+sd1_fam <- agglomerateByRank(sd1, rank ="Family", onRankOnly=TRUE) 
+# CLR-transform the samples 
+sd1_fam <- transformCounts(sd1_fam, MARGIN = "samples", method = "clr", assay.type = "counts", pseudocount=1) 
+# Z-transform the features (taxa)
+sd1_fam <- transformCounts(sd1_fam, assay.type = "clr", MARGIN = "features", method = "z", name = "clr_z") 
+# Get the top 20 most abundant taxa and make a new subset of these taxa. 
+sd1_fam_top_20 <- getTopTaxa(sd1_fam, top = 20) 
+sd1_fam <- sd1_fam[sd1_fam_top_20, ] 
+# Get the assay table. 
+sd1_fam_assay_table <- assay(sd1_fam, "clr_z") 
+library(pheatmap) 
+# Create the heatmap. 
+pheatmap(sd1_fam_assay_table, main = "Timepoint 1") 
+
+# Above steps (lines 94-108) were repeated to create heatmaps for timepoints 2-4 (sd2, sd3, sd4). 
+
+# The four timepoint heatmaps were visually analyzed to identify samples with bacterial communities that did not resemble those of other samples from the same timepoint. Dissimilar samples were generally found to have less than 5300 read counts in this dataset. Samples with less than 5300 read counts were eliminated in the following step, reducing the 30 total potential samples to 23 samples that were analyzed in depth. 
+
+##################################################################### 
+# FILTERING OUT DISSIMILAR SAMPLES (SAMPLES WITH <5300 READ COUNTS) #   
+##################################################################### 
+
+# Filter out dissimilar samples/samples below 5300 read counts, save new file as 'data_5300' 
+data_5300 <- data[ , data$orig_lowry_sample_id %in% c("19-03-26:R1:N1:A", "19-03-26:R1:N1:B", "19-03-26:R1:N1:C", "19-03-26:R1:N1:D", "19-03-26:R1:N2:C", "22-01-18:R1:N1:B", "22-01-18:R1:N1:C", "22-01-18:R1:N1:D", "22-01-18:R1:N2:A", "22-01-18:R1:N2:B", "22-01-18:R1:N2:C", "22-01-18:R1:N2:D", "22-01-25:R1:N1:A", "22-01-25:R1:N1:B", "22-01-25:R1:N1:D", "22-01-25:R1:N2:A", "22-01-25:R1:N2:B", "22-01-25:R1:N2:D", "22-03-22:R1:N1:B", "22-03-22:R1:N1:C", "22-03-22:R1:N1:D", "22-03-22:R1:N2:B", "22-03-22:R1:N2:D")] 
+
+# Print the number of samples in each sampling date category as a table 
+data_5300$sampling_date %>% table() 
+
+# Look at the dimensions of 'data_5300'. Should print the number of taxa and the number of samples (23 samples in ‘data_5300’). 
+dim(data_5300) 
+
+# Look at the sample names in ‘data_5300’. 
+data_5300$orig_lowry_sample_id 
+
+###################  
+# ALPHA DIVERSITY #   
+################### 
+
+# Load packages to create and arrange alpha diversity plots 
+library(scater) 
+library(patchwork) 
+
+# Estimate observed richness in 'data_5300' (OMA 7.1) 
+data_5300 <- mia::estimateRichness(data_5300,  
+  assay.type = "counts", index = "observed", name="observed") 
+
+# Estimate Shannon diversity 
+data_5300 <- mia::estimateDiversity(data_5300,  
+  assay.type = "counts", index = "shannon", name = "shannon") 
+
+# Estimate Faith PD diversity 
+data_5300 <- mia::estimateDiversity(data_5300,  
+  assay.type = "counts", index = "faith", name = "faith") 
+  
+# Estimate evenness (simpson) diversity 
+data_5300 <- estimateEvenness(data_5300,  
+  assay.type = "counts", index="simpson") 
+
+# Plot diversity estimates and combine all in one graph 
+data_5300_div <- lapply(c("observed", "shannon", "simpson", "faith"), 
+  plotColData, object = data_5300, x = "sampling_date",              
+  colour_by = "sampling_date", shape_by = "noodle_number") 
+  
+data_5300_div <- lapply(data_5300_div, "+",  
+  theme(axis.text.x = element_blank(), 
+  axis.title.x = element_blank(), 
+  axis.ticks.x = element_blank())) 
+
+((data_5300_div[[1]] | data_5300_div[[2]]) /  
+  (data_5300_div[[3]] | data_5300_div[[4]])) + 
+  plot_layout(guides = "collect") 
+
+##################  
+# BETA DIVERISTY #  
+################## 
+
+# Weighted and unweighted NMDS unifrac for ‘data_5300’: 
+# Make a phyloseq object from ‘data_5300’ 
+ps.data_5300 <- makePhyloseqFromTreeSE(data_5300) 
+
+# Load packages for NMDS analyses  
+library(phyloseq) 
+library(ggplot2) 
+
+# Unweighted NMDS analysis 
+ps.data_5300.uw.NMDS.uni = ordinate(ps.data_5300, method="NMDS", distance="unifrac", weighted=FALSE)  
+plot_ordination(ps.data_5300, ps.data_5300.uw.NMDS.uni, type = "samples", color = "sampling_date", shape = "noodle_number") +  
+    theme_bw() +   
+    ggtitle("Unweighted UniFrac") 
+
+# Weighted NMDS analysis 
+ps.data_5300.w.NMDS.uni = ordinate(ps.data_5300, method="NMDS", distance="unifrac", weighted=TRUE) 
+plot_ordination(ps.data_5300, ps.data_5300.w.NMDS.uni, type = "samples", color = "sampling_date", shape = "noodle_number") + 
+    theme_bw() +  
+    ggtitle("Weighted UniFrac") 
+
+# Create a combined unweighted and weighted NMDS figure 
+data_5300_uw <- plot_ordination(ps.data_5300, ps.data_5300.uw.NMDS.uni, type = "samples", color = "sampling_date", shape = "noodle_number") + 
+    theme_bw() +  
+    ggtitle("Unweighted UniFrac") 
+data_5300_w <- plot_ordination(ps.data_5300, ps.data_5300.w.NMDS.uni, type = "samples", color = "sampling_date", shape = "noodle_number") + 
+    theme_bw() +  
+    ggtitle("Weighted UniFrac") 
+library(patchwork) 
+data_5300_uw + data_5300_w + 
+  plot_layout(guides = "collect") 
+
+############################### 
+# TAXONOMY BAR PLOTS - PHYLUM # 
+############################### 
+
+# Taxonomy bar plot of the top 20 Phyla in ‘data_5300’:
+# Get relative abundances from ‘data_5300’. 
+data_5300 <- relAbundanceCounts(data_5300) 
+
+# Get top 20 Phyla from ‘data_5300’ 
+data_5300_phy <- agglomerateByRank(data_5300, rank ="Phylum", onRankOnly=TRUE) 
+data_5300_phy_top_20 <- getTopTaxa(data_5300_phy, top = 20, assay.type = "relabundance") 
+
+# Rename the "Phylum" rank to keep only top 20 taxa, rename the rest of the taxa as "Other". 
+data_5300_phy_top_20_renamed <- lapply(rowData(data_5300_phy)$Phylum, 
+  function(x){if (x %in% data_5300_phy_top_20) {x} else {"Other"}}) 
+  rowData(data_5300_phy)$Phylum <- as.character(data_5300_phy_top_20_renamed) 
+
+# Visualize the composition bar plot. Samples are displayed in chronological order and the legend is placed at the bottom in the bar plot. 
+plotAbundance(data_5300_phy, assay.type="counts", rank = "Phylum", 
+  order_rank_by="abund", order_sample_by="sampling_date", 
+  decreasing = FALSE, add_x_text = TRUE) +  
+  theme(axis.text.x = element_text(size = 7, angle = 90)) + theme(legend.position="bottom") + 
+scale_fill_manual(name = "Phylum", values = c("#0073e6", "#f57600", "#b9e192", "#e6308a", "#054fb9", "#c44601", "#cfebb6", "#b51963", "#00b4c5", "#fcc9b5", "#89ce00", "#f194b8", "#6245f5", "#faaf90", "#00bf7d", "#9b8bf4", "#646466", "#0461cf", "#F96900", "#09814A", "#AA4586")) + 
+theme(legend.title = element_text(size = 8), legend.text  = element_text(size = 7.5)) 
+
+############################### 
+# TAXONOMY BAR PLOTS - FAMILY # 
+############################### 
+
+# A taxonomy bar plot of the top 20 Families was also created: 
+data_5300 <- relAbundanceCounts(data_5300) 
+data_5300_fam <- agglomerateByRank(data_5300, rank ="Family", onRankOnly=TRUE) 
+data_5300_fam_top_20 <- getTopTaxa(data_5300_fam, top = 20, assay.type = "relabundance") 
+data_5300_fam_top_20_renamed <- lapply(rowData(data_5300_fam)$Family, 
+  function(x){if (x %in% data_5300_fam_top_20) {x} else {"Other"}}) 
+  rowData(data_5300_fam)$Family <- as.character(data_5300_fam_top_20_renamed) 
+plotAbundance(data_5300_fam, assay.type="counts", rank = "Family", 
+  order_rank_by="abund", order_sample_by="sampling_date", 
+  decreasing = FALSE, add_x_text = TRUE) +  
+  theme(axis.text.x = element_text(size = 7, angle = 90)) + theme(legend.position="bottom") + scale_fill_manual(name = "Family", values = c("#646466","#0073e6", "#f57600", "#b9e192", "#e6308a", "#054fb9", "#c44601", "#cfebb6", "#b51963", "#00b4c5", "#fcc9b5", "#89ce00", "#f194b8", "#6245f5", "#faaf90", "#00bf7d", "#9b8bf4", "#0461cf", "#F96900", "#09814A", "#AA4586")) + 
+  theme(legend.title = element_text(size = 8), legend.text  = element_text(size = 7.5)) 
+
+###################################### 
+# RELATIVE ABUNDANCE VALUES - PHYLUM #  
+###################################### 
+
+# Relative abundance values of all Phyla in ‘data_5300’:
+# Print out relative abundance values. 
+data_5300_phy_RELABUNDANCE <- transformCounts(data_5300_phy, method = "relabundance") 
+head(assay(data_5300_phy_RELABUNDANCE, "relabundance")) 
+
+# Save relative abundance values as a dataframe 
+df.data_5300_phy_RELABUNDANCE <- as.data.frame((assay(data_5300_phy_RELABUNDANCE, "relabundance"))) 
+
+# Create a tsv file of relative abundance values 
+write.table(df.data_5300_phy_REL, file='data_5300_phy_REL.tsv', quote=FALSE, sep='\t', col.names = NA) 
+
+######################################   
+# RELATIVE ABUNDANCE VALUES – FAMILY #   
+###################################### 
+
+# Relative abundance values were also obtained at the Family level: 
+data_5300_fam_RELABUNDANCE <- transformCounts(data_5300_fam, method = "relabundance") 
+head(assay(data_5300_fam_RELABUNDANCE, "relabundance")) 
+df.data_5300_fam_RELABUNDANCE <- as.data.frame((assay(data_5300_fam_RELABUNDANCE, "relabundance"))) 
+write.table(df.data_5300_fam_REL, file='data_5300_fam_REL.tsv', quote=FALSE, sep='\t', col.names = NA) 
+
+####################  
+# HEATMAP - PHYLUM #  
+#################### 
+
+# CLR, Z-transformed heatmap of the top 20 Phyla in ‘data_5300’: 
+# Agglomerate ‘data_5300’ by Phylum 
+data_5300_phy <- agglomerateByRank(data_5300, rank ="Phylum", onRankOnly=TRUE) 
+
+# CLR-transform sample counts 
+data_5300_phy <- transformCounts(data_5300_phy, MARGIN = "samples", method = "clr", assay.type = "counts", pseudocount=1) 
+# Z-transform features (taxa) 
+data_5300_phy <- transformCounts(data_5300_phy, assay.type = "clr", MARGIN = "features", method = "z", name = "clr_z") 
+# Get top 20 taxa and make a new subset with these 
+data_5300_phy_top_20 <- getTopTaxa(data_5300_phy, top = 20) 
+data_5300_phy <- data_5300_phy[data_5300_phy_top_20, ] 
+# Get the assay table 
+data_5300_phy_assay_table <- assay(data_5300_phy, "clr_z") 
+# Load pheatmap to create a heatmap 
+library(pheatmap) 
+# Create a CLR, Z-transformed heatmap of the top 20 Phyla 
+pheatmap(data_5300_phy_assay_table) 
+
+####################   
+# HEATMAP - FAMILY #   
+#################### 
+
+# A CLR, Z-transformed heatmap of the top 20 Families was also created: 
+data_5300_fam <- agglomerateByRank(data_5300, rank ="Family", onRankOnly=TRUE)  
+data_5300_fam <- transformCounts(data_5300_fam, MARGIN = "samples", method = "clr", assay.type = "counts", pseudocount=1) 
+data_5300_fam <- transformCounts(data_5300_fam, assay.type = "clr", MARGIN = "features", method = "z", name = "clr_z") 
+data_5300_fam_top_20 <- getTopTaxa(data_5300_fam, top = 20) 
+data_5300_fam <- data_5300_fam[data_5300_fam_top_20, ] 
+data_5300_fam_assay_table <- assay(data_5300_fam, "clr_z") 
+library(pheatmap) 
+pheatmap(data_5300_fam_assay_table) 
