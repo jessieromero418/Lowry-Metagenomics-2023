@@ -1,5 +1,7 @@
 # Bin quality and taxonomy protocol for 12 metagenomic samples
 
+# Performed on the alderaan math cluster
+
 # Print start time.
 d=$(date +'%m/%d/%Y %H:%M')
 echo "STARTED AT ${d}"
