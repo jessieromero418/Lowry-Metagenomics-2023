@@ -1,5 +1,5 @@
 # Gene analysis protocol for 12 metagenomic samples (miller-lab) (blast for SDIMOs and filtering)
-# Transfer assemblies from alderaan math cluster to miller-lab first.
+# Transfer assemblies from alderaan math cluster to miller-lab first (performed on miller-lab).
 
 # To submit to colony: qsub -l h=colony -pe smp 48 genes-tree.sh
 
