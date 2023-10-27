@@ -1,0 +1,16 @@
+####################################################
+# PHYLOGENETIC TREE - TIER, ALL SAMPLES, CLUSTERED #
+####################################################
+
+# Set CD-HIT parameters as variables
+c=0.9
+aL=0.95
+
+echo " ********** Build a phylogenetic tree with Goff and Hug SDIMOs and hits after CD-HIT clustering with FastTree (>${P}% identity, >${L} alignment length, >${Q}% query coverage) ********** "
+
+# Build a phylogenetic tree with ALL clustered aligned protein sequences
+FastTree /home/romejess/may2022_metagenomics/ALL-${TIER}/align/Goff_Hug_and_ALL-${TIER}-c${c}-aL${aL}_aligned.faa > /home/romejess/may2022_metagenomics/ALL-${TIER}/trees/FT_GF_ALL-${TIER}-c${c}-aL${aL}_tree.newick
+
+# Print end time.
+d=$(date +'%m/%d/%Y %H:%M')
+echo "ENDED AT ${d}"
