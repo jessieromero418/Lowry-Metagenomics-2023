@@ -1,0 +1,188 @@
+############################################################################## 
+################# PRE-PROCESSING 16S rRNA DATA WITH QIIME2 ################### 
+############################################################################## 
+
+####################### 
+# QIIME2 INSTALLATION # 
+####################### 
+
+# Conda install QIIME2 (Version 2023.5) 
+conda activate 
+wget https://data.qiime2.org/distro/core/qiime2-2023.5-py38-linux-conda.yml 
+conda env create -n qiime2-2023.5 --file qiime2-2023.5-py38-linux-conda.yml 
+
+# Conda activate QIIME2. 
+conda activate qiime2-2023.5 
+
+# Check that QIIME2 installed correctly by printing help message. 
+qiime --help 
+
+# To activate conda within a bash script, remove ‘#’ from next line and add at the start of the script: 
+#source ~/miniconda3/etc/profile.d/conda.sh 
+
+# Set number of cores/threads as a variable 
+
+t=48 
+
+#################### 
+
+echo " ********** 16S ANALYSIS ********** " 
+
+# Set path to raw 16S data directory as a variable. 
+CM_path=/home/chris/Lowry/2022_Fall_16S_GB/ 
+
+echo " The 16S data is stored in ${CM_path} " 
+
+# Make a directory for all QIIME2 files. 
+mkdir /home/romejess/fall2022_16S/ 
+
+# Set path to above directory as a variable. 
+path=/home/romejess/fall2022_16S/ 
+
+echo " The QIIME2 files are stored in ${path} " 
+
+#################### 
+
+# Print QIIME2 version. 
+qiime --version 
+
+# Make a directory within the QIIME2 files directory to store all output files. 
+mkdir /home/romejess/fall2022_16S/2022_Fall_R1/ 
+
+# Set above directory as a variable. 
+path_qdir=/home/romejess/fall2022_16S/2022_Fall_R1/ 
+
+############### 
+# IMPORT DATA # 
+############### 
+
+# NOT PERFORMED ON THE COMMAND LINE: First, the 30 samples for this thesis were copied from the original manifest csv file of all 186 samples into a new file (original manifest file name: 2022_Fall_16S_GB_manifest.csv; new manifest file name with 30 thesis samples: 2022_Fall_16S_GB_R1_samples_manifest.csv). The new manifest file was transferred to the server for analysis. 
+
+# Save new manifest file as a variable, then import. 
+manifest=/home/romejess/fall2022_16S/2022_Fall_16S_GB_R1_samples_manifest.csv 
+
+# Save prefix as a variable to help with downstream file naming. 
+prefix=2022_Fall_16S_GB_R1_samples 
+
+# Import data as PairedEndFastqManifestPhred33. 
+echo " ********** Import samples from GB Fall 2022 data as PairedEndFastqManifestPhred33 ********** " 
+
+echo " ********** tools import ********** " 
+
+qiime tools import \ 
+       --type 'SampleData[PairedEndSequencesWithQuality]' \ 
+       --input-path ${manifest} \ 
+       --output-path ${path_qdir}${prefix}_demux.qza \ 
+       --input-format PairedEndFastqManifestPhred33 
+
+# Save output demux.qza as a variable, then summarize. 
+demux=/home/romejess/fall2022_16S/2022_Fall_R1/2022_Fall_16S_GB_R1_samples_demux.qza 
+
+# demux summarize 
+
+echo " ********** demux summarize ********** " 
+
+qiime demux summarize \ 
+       --i-data ${demux} \ 
+       --o-visualization ${path_qdir}${prefix}_demux.qzv 
+
+# The output demux.qzv file was downloaded from the server, then visualized in QIIME2 View. Results in QIIME2 View were used to select parameters for denoising (next step). 
+
+############# 
+# DENOISING # 
+############# 
+
+echo " ********** Denoising based on output demux.qzv results in QIIME2 View ********** " 
+
+# Denoise (feature table (table.qza in output directory) will be used in R analysis). 
+echo " ********** dada2 (strict) ********** " 
+qiime dada2 denoise-paired \ 
+       --i-demultiplexed-seqs ${demux} \ 
+       --p-trim-left-f 0 \ 
+       --p-trim-left-r 0 \ 
+       --p-trunc-len-f 250 \ 
+       --p-trunc-len-r 60 \ 
+       --p-max-ee-f 2 \ 
+       --p-max-ee-r 2 \ 
+       --p-trunc-q 2 \ 
+       --output-dir ${path_qdir}dada2_table_strict \ 
+       --p-n-threads ${t} 
+
+# NOT PERFORMED ON THE COMMAND LINE: Reformat metadata for visualization. First, the 30 samples for this thesis were copied from the original tsv version of the metadata file for all 186 samples into a new file (original metadata file: 2022_Fall_16S_GB_metadata.tsv; new metadata file with 30 thesis samples: 2022_Fall_16S_GB_R1_samples_metadata.tsv). The new metadata file was transferred to the server for analysis (new metadata file was also used in R analysis). 
+
+# Save new metadata file as a variable, then tabulate. 
+metadata=/home/romejess/fall2022_16S/2022_Fall_16S_GB_R1_samples_metadata.tsv 
+
+echo " ********** metadata tabulate ********** " 
+qiime metadata tabulate \ 
+       --m-input-file ${metadata} \ 
+       --o-visualization ${path_qdir}${prefix}_metadata.qzv 
+
+# Visualize dada2 (strict) feature table in QIIME2 View. 
+echo " ********** feature-table summarize ********** " 
+qiime feature-table summarize \ 
+       --i-table ${path_qdir}dada2_table_strict/table.qza \ 
+       --o-visualization ${path_qdir}${prefix}_table_strict.qzv \ 
+       --m-sample-metadata-file ${metadata} 
+
+# Visualize dada2 (strict) representative sequences in QIIME2 View. 
+echo " ********** feature-table tabulate-seqs ********** " 
+qiime feature-table tabulate-seqs \ 
+       --i-data ${path_qdir}dada2_table_strict/representative_sequences.qza \ 
+       --o-visualization ${path_qdir}${prefix}_representative_sequences.qzv 
+
+############ 
+# TAXONOMY # 
+############ 
+
+# Make a directory to store output taxonomy files. 
+mkdir /home/romejess/fall2022_16S/2022_Fall_R1/tax/ 
+
+# Set above directory as a variable. 
+path_tax=/home/romejess/fall2022_16S/2022_Fall_R1/tax/ 
+
+# Assign taxonomy to dada2 (strict) representative sequences (taxonomy table will be used in R analysis). 
+echo " ********** feature-classifier classify-sklearn ********** " 
+qiime feature-classifier classify-sklearn \ 
+        --i-classifier ${CM_path}qiime2/silva-138-99-515-806-nb-classifier.qza \ 
+        --i-reads ${path_qdir}dada2_table_strict/representative_sequences.qza \ 
+        --o-classification ${path_tax}${prefix}_taxonomy-silva-138-99-515-806.qza \ 
+        --p-n-jobs ${t} 
+
+# Visualize taxonomy table in QIIME2 View. 
+echo " ********** metadata tabulate, taxonomy table ********** " 
+qiime metadata tabulate \ 
+        --m-input-file ${path_tax}${prefix}_taxonomy-silva-138-99-515-806.qza \ 
+        --o-visualization ${path_tax}${prefix}_taxa_table-silva-138-99-515-806.qzv 
+
+# Visualize preliminary taxonomy bar chart in QIIME2 View. 
+echo " ********** taxa barplot ********** " 
+qiime taxa barplot \ 
+        --i-table ${path_qdir}dada2_table_strict/table.qza \ 
+        --i-taxonomy ${path_tax}${prefix}_taxonomy-silva-138-99-515-806.qza \ 
+        --m-metadata-file ${metadata} \ 
+        --o-visualization ${path_tax}${prefix}_taxa-bar-plots-gg-13-8-99-515-806.qzv 
+
+##################### 
+# PHYLOGENETIC TREE # 
+##################### 
+
+# Make a directory to store output phylogenetic tree files. 
+mkdir /home/romejess/fall2022_16S/2022_Fall_R1/tree/ 
+
+# Set above directory as a variable. 
+path_tree=/home/romejess/fall2022_16S/2022_Fall_R1/tree/ 
+
+echo " ********** phylogeny align-to-tree-mafft-fasttree ********** " 
+
+# Create unrooted and rooted phylogenetic trees (rooted tree will be used in R analysis). 
+qiime phylogeny align-to-tree-mafft-fasttree \ 
+       --i-sequences ${path_qdir}dada2_table_strict/representative_sequences.qza \ 
+       --o-alignment ${path_tree}aligned-rep-seqs.qza \ 
+       --o-masked-alignment ${path_tree}masked-aligned-rep-seqs.qza \ 
+       --o-tree ${path_tree}unrooted-tree.qza \ 
+       --o-rooted-tree ${path_tree}rooted-tree.qza \ 
+       --p-n-threads ${t} 
+
+# Deactivate QIIME2. 
+conda deactivate
