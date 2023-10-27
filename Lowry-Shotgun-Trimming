@@ -81,9 +81,6 @@ rqcfilter2.sh -Xmx30g in=${interleaved} \
         tmpdir= barcodefilter=f trimpolyg=5 usejni=f \
         threads=${t}
 
-# Set rqcfilter2 output directory as a variable.
-rqcfilter2=${path_S_trim}rqcfilter2_out/
-
 # Print end time.
 d=$(date +'%m/%d/%Y %H:%M')
 echo "ENDED AT ${d}"
