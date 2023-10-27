@@ -1,4 +1,6 @@
-# Gene abundances protocol for 12 metagenomic samples - CoverM (JR, 08.28.23)
+# Gene abundances protocol for 12 metagenomic samples - CoverM
+
+# Performed on the alderaan math cluster
 
 # Print start time.
 d=$(date +'%m/%d/%Y %H:%M')
