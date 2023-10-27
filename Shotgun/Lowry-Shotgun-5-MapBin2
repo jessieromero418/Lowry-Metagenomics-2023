@@ -1,5 +1,7 @@
 # Mapping and binning protocol for 12 metagenomic samples, Part 2 - reformat.sh, calmd, jgi
 
+# Performed on the alderaan math cluster
+
 # Print start time.
 d=$(date +'%m/%d/%Y %H:%M')
 echo "STARTED AT ${d}"
