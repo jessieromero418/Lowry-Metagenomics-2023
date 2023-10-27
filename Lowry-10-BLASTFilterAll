@@ -24,8 +24,8 @@ echo " The metagenomics data is stored in ${path} "
 # FILTER ALL GOFF AND HUG PROTEINS - ALL SAMPLES #
 ##################################################
 
-# For loop to filter out ALL Goff and Hug SDIMO hits in blastp output files into a new file.
-# sample variable represents sample, set for 1-12 to represent all 12 samples.
+# For loop to filter out ALL Goff and Hug SDIMO blastp hits from prodigal proteins.faa file into a new file. 
+# sample variable represents sample proteins, set for 1-12 to represent all 12 sample proteins.
 for sample in 1 2 3 4 5 6 7 8 9 10 11 12 # if needed, change for each sample based on what has been filtered or set as: 1 2 3 4 5 6 7 8 9 10 11 12
 do
 echo " ********** Filter out ALL Goff and Hug SDIMO hits in Sample ${sample} into new file ********** "
