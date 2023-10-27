@@ -1,5 +1,6 @@
 # Gene analysis protocol for 12 metagenomic samples (miller-lab) (alignment - tier level)
-# Transfer assemblies from alderaan math cluster to miller-lab first.
+
+# Performed on miller-lab
 
 # To submit to colony: qsub -l h=colony -pe smp 48 genes-tree.sh
 
