@@ -1,4 +1,4 @@
-# Mapping and binning protocol for 12 metagenomic samples (Part 1)
+# Mapping and binning protocol for 12 metagenomic samples, Part 1 - bbmap, samtools sort
 
 # Print start time.
 d=$(date +'%m/%d/%Y %H:%M')
