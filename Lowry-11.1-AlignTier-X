@@ -79,24 +79,6 @@ mkdir /home/romejess/may2022_metagenomics/ALL-${TIER}/align/
 # Align query proteins and all filtered blastp hits with percent identity, alignment length, and query coverage parameters.
 mafft /home/romejess/may2022_metagenomics/ALL-${TIER}/Goff_Hug_and_ALL-${TIER}.faa > /home/romejess/may2022_metagenomics/ALL-${TIER}/align/Goff_Hug_and_ALL-${TIER}_aligned.faa
 
-
-##############################################################
-# ALIGN GOFF AND HUG PROTEINS - TIER, ALL SAMPLES, CLUSTERED #
-##############################################################
-
-echo " ********** Align tier Goff and Hug clustered SDIMO hits in ALL Samples (>${P}% identity, >${L} alignment length, >${Q}% query coverage) ********** "
-
-# Set CD-HIT parameters as variables
-c=0.9
-aL=0.95
-
-# Join query proteins and clustered proteins and place them into a new file for alignment
-cat /home/romejess/may2022_metagenomics/query_Goff_Hug.faa /home/romejess/may2022_metagenomics/ALL-${TIER}/cdhit/ALL-${TIER}-c${c}-aL${aL}.faa > /home/romejess/may2022_metagenomics/ALL-${TIER}/cdhit/Goff_Hug_and_ALL-${TIER}-c${c}-aL${aL}.faa
-
-# Align query proteins and all filtered blastp hits with percent identity, alignment length, and query coverage parameters after CD-HIT clustering.
-mafft /home/romejess/may2022_metagenomics/ALL-${TIER}/cdhit/Goff_Hug_and_ALL-${TIER}-c${c}-aL${aL}.faa > /home/romejess/may2022_metagenomics/ALL-${TIER}/align/Goff_Hug_and_ALL-${TIER}-c${c}-aL${aL}_aligned.faa
-
-
 # Print end time.
 d=$(date +'%m/%d/%Y %H:%M')
 echo "ENDED AT ${d}"
