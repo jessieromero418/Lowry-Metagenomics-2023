@@ -1,4 +1,4 @@
-# Mapping and binning protocol for 12 metagenomic samples, Part 2 - truncate, calmd, jgi
+# Mapping and binning protocol for 12 metagenomic samples, Part 2 - reformat.sh, calmd, jgi
 
 # Print start time.
 d=$(date +'%m/%d/%Y %H:%M')
