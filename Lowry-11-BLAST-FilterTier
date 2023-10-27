@@ -42,8 +42,8 @@ echo " ********** Filter out Goff and Hug SDIMO hits (>${P}% identity, >${L} ali
 # Set blastp filter parameters as a variable for file naming
 TIER=P90-L125-Q60
 
-# For loop to filter out blastp hits from prodigal proteins.faa file. sample variable represents sample
-# proteins, set for 1-12 to represent all 12 sample proteins.
+# For loop to filter out tier-level Goff and Hug SDIMO blastp hits from prodigal proteins.faa file into a new file. 
+# sample variable represents sample proteins, set for 1-12 to represent all 12 sample proteins.
 for sample in 1 2 3 4 5 6 7 8 9 10 11 12 # if needed, change for each sample based on what has been blasted or set as: 1 2 3 4 5 6 7 8 9 10 11 12
 do
 
