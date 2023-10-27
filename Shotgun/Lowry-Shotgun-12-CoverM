@@ -54,19 +54,23 @@ conda activate coverm
 coverm -V
 
 # Calculate gene abundances with coverm.
-coverm contig --methods tpm \
+coverm contig --methods rpkm \
         --bam-files ${path_S_calmd}S${sample}.trimmed_vs_S${sample}.contigs.sorted.trunc.calmd.bam \
-        --output-file ${path_S_coverm}S${sample}.trimmed_vs_S${sample}.contigs.sorted.trunc.calmd.tpm.txt -t ${t}
+        --output-file ${path_S_coverm}S${sample}.trimmed_vs_S${sample}.contigs.sorted.trunc.calmd.rpkm.txt -t ${t}
 
 echo " ********** Add Sample Names to Contigs for Sample ${sample} ********** "
 
 # Add sample names to contigs
 sed -i "s/k127/S${sample}_k127/g" "${path_S_coverm}S${sample}.trimmed_vs_S${sample}.contigs.sorted.trunc.calmd.tpm.txt"
 
+#################################
+# GENE ABUNDANCES - TIER FILTER #
+#################################
+
 echo " ********** Filter out Tier 1 Contigs from CoverM Output, Add to New File for Sample ${sample} ********** "
 
 # Add Tier 1 contigs and abundances values to a new file
-grep -Fw -f ${path}Tier_1_contigs.txt ${path_S_coverm}S${sample}.trimmed_vs_S${sample}.contigs.sorted.trunc.calmd.tpm.txt >> ${path}Tier_1_tpm.txt
+grep -Fw -f ${path}Tier_1_contigs.txt ${path_S_coverm}S${sample}.trimmed_vs_S${sample}.contigs.sorted.trunc.calmd.rpkm.txt >> ${path}Tier_1_rpkm.txt
 
 done
 
