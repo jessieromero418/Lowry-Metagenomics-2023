@@ -42,7 +42,7 @@ path_S=/storage/biology/projects/miller-lowry/2022_metagenomics/S${sample}/
 path_S_calmd=${path_S}calmd/
 
 # Make a directory to store sample coverm output files.
-#mkdir /storage/biology/projects/miller-lowry/2022_metagenomics/S${sample}/coverm/
+mkdir /storage/biology/projects/miller-lowry/2022_metagenomics/S${sample}/coverm/
 
 # Set path to binning output directory as a variable
 path_S_coverm=${path_S}coverm/
