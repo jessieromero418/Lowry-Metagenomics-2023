@@ -56,12 +56,12 @@ cd-hit
 
 # Set CD-HIT parameters as variables
 c=0.9
-aL=0.95
+aS=0.95
 
 # Cluster proteins based on seqeunce identity and coverage
 cd-hit -i ${path}ALL-${TIER}/ALL-${TIER}.faa \
-      -o ${path}ALL-${TIER}/cdhit/ALL-${TIER}-c${c}-aL${aL}.faa \
-      -M 2400 -c ${c} -aL ${aL} -T ${t}
+      -o ${path}ALL-${TIER}/cdhit/ALL-${TIER}-c${c}-aS${aS}.faa \
+      -M 2400 -c ${c} -aS ${aS} -T ${t}
 
 # Deactivate CD-HIT.
 conda deactivate
